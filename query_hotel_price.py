@@ -26,7 +26,7 @@ def _run_async(coro):
         return pool.submit(asyncio.run, coro).result()
 
 
-HOTELS_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "hotels.xlsx")
+HOTELS_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "hotel_catalog.xlsx")
 
 
 def _normalize(name: str) -> str:
@@ -92,7 +92,7 @@ def _query_night_price_sync(hotel_name: str, check_in: str, check_out: str):
     """查询单晚房价（同步接口，内部启动 Playwright）"""
     hotel_db = _load_hotel_db()
     if not hotel_db:
-        return {"error": "酒店ID数据库为空，请确认 data/hotels.xlsx 存在"}
+        return {"error": "酒店ID数据库为空，请确认 data/hotel_catalog.xlsx 存在"}
 
     matched = _find_hotel_by_name(hotel_db, hotel_name)
     if not matched:

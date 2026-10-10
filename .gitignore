@@ -73,3 +73,15 @@ output/
 # Browser debugging output (already tracked files remain tracked)
 data/debug_*.png
 images/debug_*.png
+
+# Generated runtime state, downloaded packages and local test output
+data/runtime/
+data/demo_runtime/
+data/test_runtime/
+data/package_cache/
+data/qa_runtime/
+data/*.faiss
+data/*.json
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal

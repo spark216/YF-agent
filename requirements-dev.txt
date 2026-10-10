@@ -1,0 +1,5 @@
+-r requirements-core.txt
+pytest>=8,<10
+pytest-asyncio>=0.24,<2
+fakeredis>=2,<3
+playwright>=1.50,<2

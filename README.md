@@ -1,344 +1,253 @@
-# YF-Agent · 闲鱼酒店场景智能客服
+# YF-Agent｜酒店预订智能客服 Agent
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![LangGraph](https://img.shields.io/badge/Agent-LangGraph-166534)](https://github.com/langchain-ai/langgraph)
+[![LangGraph](https://img.shields.io/badge/Workflow-LangGraph-166534)](https://github.com/langchain-ai/langgraph)
+[![Redis](https://img.shields.io/badge/Session-Redis%20%2B%20SQLite-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![FAISS](https://img.shields.io/badge/Retrieval-BGE--M3%20%2B%20FAISS-3451B2)](https://github.com/facebookresearch/faiss)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue)](LICENSE)
 
-**将闲鱼消息接入、酒店意图识别、多轮对话和实时查价连接起来的 Python Agent 项目。**
+**围绕酒店预订咨询，构建可维护多轮状态、可更新检索条件、可追踪与恢复任务的客服 Agent。**
 
-YF-Agent 面向酒店咨询与预订沟通场景：通过 WebSocket 接收闲鱼消息，用本地 BGE-M3 微调分类模型识别意图，由 LangGraph 分发到价格、预订、议价或常规咨询节点，按需调用酒店查询工具，再将回复发送回会话。
+面向酒店代理商的店铺消息场景，串联需求收集、酒店候选推荐、条件修改和预订引导。通过 LangGraph 编排业务流程，Redis 缓存活跃会话，SQLite 保存持久状态、业务数据和检查点，FAISS 对酒店目录进行向量排序。
 
-适合作为 **Agent 工程实践、酒店客服场景原型和课程 / 面试项目展示**。包含平台接入与终端演示两种入口；运行需要自行配置模型服务并准备本地意图模型。仓库不包含完整模型权重，尚未提供真实自动下单、支付或履约接口。
+项目经历：**独立开发，2026.03—2026.05**。当前仓库的会话、恢复及展示功能于 **2026.10** 整理增强。真实店铺接入与用户试用属于开发者项目经历；公开仓库不包含生产账号、用户对话或成交数据。下面的截图和测试结果来自本版本实际运行的离线演示。
 
-## 导航
+<p align="center">
+  <img src="images/booking-conversation.png" width="1100" alt="实际运行的酒店预订客服工作台：多轮对话、结构化槽位、候选酒店与节点轨迹">
+</p>
 
-- [核心能力](#核心能力)
-- [系统架构](#系统架构)
-- [项目结构](#项目结构)
-- [快速开始](#快速开始)
-- [配置说明](#配置说明)
-- [演示与项目展示](#演示与项目展示)
-- [模型训练与独立模块](#模型训练与独立模块)
-- [扩展开发](#扩展开发)
-- [常见问题与当前限制](#常见问题与当前限制)
-- [许可与致谢](#许可与致谢)
+## 项目解决的问题
 
-## 核心能力
+酒店咨询通常不会一次提供完整条件：“去上海住两晚”“换成双床房”“预算再低一点”。如果只保存聊天记录，Agent 容易继续推荐旧条件下的酒店，或把工具没有返回的房态当成事实。
 
-### 平台接入与人工接管
+本项目将近期对话、结构化需求和任务状态分别管理：先补齐城市、入住/离店日期、每晚预算与房型，再查询候选；任何条件变化都会清空旧候选、递增需求版本并重新检索。工具失败保留检查点，同一消息重试时从未完成节点继续执行。
 
-- WebSocket 消息接收、心跳、Token 刷新与异常重连。
-- 按会话 ID 保存历史，同一会话使用异步锁串行处理，减少同时到达的消息造成上下文混乱。
-- 人工 / AI 接管切换、接管超时、消息过期与系统消息过滤。
-- 可选模拟输入延迟，使用 Loguru 输出运行日志。
+## 工程能力
 
-### 四类意图与客服流程
+- **流程编排**：LangGraph 串联意图识别、槽位更新、条件校验、酒店检索、回复与预订引导，真实查价可作为可选节点接入。
+- **检索与过滤**：支持 BGE-M3 编码与 FAISS 排序，SQLite 按城市、日期、每晚预算和房型执行约束过滤；酒店目录实际导入 **9,999 家**，约 1 万家。
+- **多轮状态**：Redis 保存带 TTL 的活跃会话，SQLite 保存完整业务状态；缓存版本不一致或 Redis 故障时从持久层恢复。
+- **候选失效**：城市、日期、预算或房型修改后，立即清除旧候选和已选酒店，使用版本号关联新结果。
+- **并发与去重**：同一会话串行处理，不同会话受 Semaphore 限制；按会话 ID + 消息 ID 保存请求结果，重复消息不会追加历史或重复运行工作流。
+- **任务恢复**：LangGraph 异步 SQLite 检查点、有限次数重试和工具超时；服务重新启动后可以继续失败的节点，旧任务不会覆盖更新后的需求。
+- **追踪与验证**：记录节点状态、耗时、工具结果、重试及异常类型；自动断言覆盖多轮状态和恢复边界，截图通过浏览器实际操作生成。
 
-- **查询价格**：例如“一晚多少钱？”；进入价格节点，可调用查价工具。
-- **下单预订**：例如“周五入住两晚”；进入预订沟通节点，可查询房型和价格。
-- **议价砍价**：例如“能便宜一点吗？”；进入议价节点，执行提示词中的业务规则。
-- **常规咨询**：例如“交通方便吗？”；进入默认咨询节点。
+## 运行效果
 
-图中保留 `no_reply` 分支，但当前四分类模型不输出该类别；平台侧另有系统消息过滤。议价策略由提示词决定，当前示例强调价格底线与替代方案，不应宣称已实现自动阶梯降价。
+### 条件修改：旧候选失效后重新检索
 
-### 工具执行与数据存储
+用户从“大床房、400 元/晚”改为“双床房、300 元/晚”，右侧槽位被更新，候选版本递增，酒店结果重新计算。不是将旧结果重新组织成一句回复。
 
-- `search_hotel_price(hotel_name, check_in, check_out)`：匹配 `data/hotels.xlsx` 中的酒店 ID，通过 Playwright 访问华住会详情页获取房型与价格，将结果保存至本地 Excel。
-- `crawl_hotels(city, check_in, check_out)`：采集指定城市的酒店数据并写入本地。
-- `query_hotel_price.py`：独立逐晚查询与终端汇总，不需要闲鱼 Cookie 或 LLM API。
-- SQLite 保存会话、商品信息和议价次数，默认历史上限为 100。
-- 独立研究模块提供 BGE-M3 分类训练、Flask 推理 API，以及 FAISS / BGE-M3 / Qwen 预订信息抽取；RAG 模块尚未接入主客服图。
+<p align="center"><img src="images/slot-update.png" width="1100" alt="预算与房型更新后的真实运行结果"></p>
+
+### 预订引导：选定候选后进入确认状态
+
+用户选择候选酒店后，系统保留当前需求与选择，提示确认入住人数、联系人及最终房态。本项目不自动提交真实订单或执行支付。
+
+<p align="center"><img src="images/booking-guidance.png" width="1100" alt="选择候选酒店后进入预订确认引导"></p>
+
+<details>
+<summary>展开查看：重复消息去重与无匹配结果</summary>
+
+重放相同消息 ID，工作流记录 `message_dedup`，会话历史不会重复追加。
+
+<img src="images/message-dedup.png" width="1100" alt="消息 ID 去重的真实运行结果">
+
+预算降到 100 元后没有满足条件的样例房源，候选清空并引导修改条件。
+
+<img src="images/no-match.png" width="1100" alt="无匹配候选时的真实运行结果">
+
+</details>
+
+**截图说明：**演示真实执行 LangGraph、FAISS、SQLite 和 Redis 客户端接口；使用规则槽位、384 维哈希向量、样例房态及 fakeredis。它们不代表 BGE-M3 检索效果、真实 Redis 服务部署或酒店实时成交报价，页面也明确标注了演示模式。
 
 ## 系统架构
 
 ```mermaid
 flowchart TD
-    A[闲鱼用户消息] --> B[WebSocket 接入]
-    B --> C{消息过滤与人工接管检查}
-    C -->|AI 处理| D[读取 SQLite 会话与商品信息]
-    T[终端演示] --> D
-    D --> E[BGE-M3 微调意图分类]
-    E --> F{LangGraph 路由}
-    F --> P[价格提示词]
-    F --> R[预订提示词]
-    F --> N[议价提示词]
-    F --> Q[咨询提示词]
-    P --> L[调用模型服务]
-    R --> L
-    N --> L
-    Q --> L
-    L --> U{是否请求工具}
-    U -->|查询或预订分支| V[ToolNode 酒店查价或批量采集]
-    V --> H[华住会网页与本地 Excel]
-    H --> L
-    U -->|生成回复| S[回复内容过滤]
-    S --> K[保存历史]
-    K --> W[平台发送或终端输出]
+    A[闲鱼 WebSocket / 本地演示界面] --> B[会话串行 + 消息 ID 去重]
+    B --> C[Semaphore 并发限制]
+    C --> D[读取持久状态与 Redis 活跃缓存]
+    D --> E[意图识别]
+    E --> F[槽位补全 / 条件修改]
+    F --> G[清除旧候选与选择 · 需求版本递增]
+    G --> H{条件完整且有效?}
+    H -->|否| I[追问缺失槽位或纠正日期]
+    H -->|是| J[FAISS 向量排序]
+    H -. 可选实时查询 .-> Q[Playwright 网页报价]
+    Q -. 房态需核验 .-> J
+    J --> K[SQLite 城市 / 日期 / 预算 / 房型过滤]
+    K --> L[候选推荐 / 无匹配引导 / 预订确认]
+    I --> M[持久化会话和请求结果]
+    L --> M
+    M --> N[Redis 缓存刷新 + 返回回复]
+    E -. 节点状态 .-> P[SQLite 检查点与追踪记录]
+    F -. 节点状态 .-> P
+    K -. 节点状态 .-> P
 ```
 
-主流程为 `main.py → xianyu_graph.py`。`XianyuAgent.py` 和 `tools.py` 保留早期 Agent / Function Calling 实现，供对照使用。
+### 状态与存储职责
 
-图设置循环上限，目前按 LLM 调用轮次计数。模型调用传递 `enable_thinking` / `enable_search` 等通义千问风格扩展参数，切换服务商时需要检查兼容性。
+- **Redis**：近期对话、业务槽位、候选、需求版本和任务状态的活跃缓存，默认 TTL 1,800 秒；不承担最终持久化。
+- **SQLite 会话库**：会话状态、消息去重结果、平台回复发送记录、节点轨迹。
+- **SQLite 检查点库**：LangGraph 每个节点的可恢复状态。
+- **SQLite 酒店库**：酒店目录和逐日房型报价/库存。目录存在不表示指定日期有房。
+- **FAISS**：对酒店目录进行向量相似度排序；生产编码器使用 BGE-M3，离线演示使用明确标注的哈希编码器。
+
+当前采用全目录相似度排序后执行硬约束过滤，避免较小 Top-K 提前丢掉满足预算/日期的酒店；约 1 万家目录下使用 `IndexFlatIP`。实现与取舍见 [架构说明](docs/ARCHITECTURE.md)。
+
+## 五分钟运行演示
+
+推荐 Python 3.10—3.12，使用独立虚拟环境。离线模式无需 API Key、闲鱼 Cookie 或模型权重。
+
+```powershell
+git clone https://github.com/link080/YF-Agent.git
+cd YF-Agent
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+python demo_web.py --redis-simulated
+```
+
+打开 [本地演示页面](http://127.0.0.1:8765)，依次操作：
+
+1. **收集需求**：输入“想去上海住酒店”。
+2. **补全条件**：提供入住/离店日期、每晚预算和房型。
+3. **修改条件**：输入“预算改成300元，换双床房”。
+4. **重复消息**：点击“重放上一消息”，观察去重轨迹。
+5. **预订引导**：输入“选第一个”。
+6. **无匹配**：将预算改为100元，观察旧候选清空。
+
+终端演示和自动脚本：
+
+```powershell
+python demo_booking.py
+python demo_booking.py --scripted --output data/demo_runtime/showcase.json
+```
+
+样例房态自动存放在隔离的 `data/demo_runtime/` 或 `data/qa_runtime/`，不会覆盖原始 Excel 与生产运行库。展示提纲见 [DEMO.md](docs/DEMO.md)。
+
+## 接入真实 Redis 与模型服务
+
+### Redis
+
+```powershell
+docker compose -f docker-compose.redis.yml up -d
+Copy-Item .env.example .env
+```
+
+设置 `.env`：
+
+```dotenv
+REDIS_URL=redis://127.0.0.1:6379/0
+SESSION_TTL=1800
+MAX_CONCURRENCY=4
+TOOL_TIMEOUT=20
+TOOL_RETRIES=2
+```
+
+`python demo_web.py` 会尝试连接配置的 Redis；使用 `--redis-simulated` 才会启用 fakeredis。Redis 连接失败时保持 SQLite 可用，界面显示回退状态。缓存读取会核对持久层版本，避免旧缓存覆盖新的城市、预算或日期。
+
+### BGE-M3 与模型槽位抽取
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+```dotenv
+API_KEY=your_api_key
+MODEL_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+MODEL_NAME=your_available_model
+RETRIEVAL_BACKEND=bge
+BGE_MODEL_PATH=BAAI/bge-m3
+LLM_SLOT_EXTRACTION=true
+INTENT_BACKEND=rules
+LIVE_PRICE_ENABLED=false
+```
+
+`BGE_MODEL_PATH` 可设置为本地模型目录。第一次使用模型标识会由模型库下载权重；模型文件不随 Git 提交。可选 `INTENT_BACKEND=bge` 使用已有微调四分类模型，需准备 `models/output/train_model/intent_model/` 与匹配基础模型。
+
+模型槽位抽取只接受已知字段并校验类型、日期；确定性解析优先。默认回复使用可追溯的业务模板，价格与日期来自结构化结果；原有生成式回复图仍保留在 `xianyu_graph.py`，可通过 `demo_chat.py` 对照运行。
+
+### 平台消息与真实查价
+
+配置本人店铺 Cookie 后启动：
+
+```dotenv
+COOKIES_STR=your_own_shop_cookies
+LIVE_PRICE_ENABLED=true
+LIVE_PRICE_HOTELS=2
+```
+
+```powershell
+python -m playwright install chromium
+python run_xianyu.py
+```
+
+平台入口已经接入新会话服务。保留心跳、Token 刷新、人工接管和商品信息读取；卖家发送 `TOGGLE_KEYWORDS`（默认 `。`）切换人工/AI 模式。
+
+网页查价只提供参考报价，不能虚构库存数量。真实报价候选进入 `quote_pending`，提示人工核验；只有具备完整逐日房态数据的房源才进入可推荐库存候选。生产库不会自动生成演示房态。
+
+完整配置与部署边界见 [DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+
+## 测试与可复现证据
+
+本次运行：**31 项自动测试通过，6 轮浏览器交互断言通过，生成 5 张真实页面截图**。
+
+覆盖需求缺失、城市/日期/预算/房型修改、选择后修改、无匹配、缺少某晚房态、售罄、消息重复、并发上限、Redis TTL/过期/故障/旧缓存、有限重试、工具超时、服务重启恢复和过期任务拒绝。
+
+```powershell
+python -m pytest -q
+# 启动 demo_web.py 后，使用系统 Edge 捕获真实运行截图
+python scripts/capture_demo.py --channel msedge
+```
+
+没有 Edge 时可执行 `python -m playwright install chromium`，再使用 `--channel chromium`。测试结果及人工复核检查点见 [TESTING.md](docs/TESTING.md)。
+
+这些工程断言不等同于意图模型准确率、用户转化率或生产吞吐量；真实用户测试记录和模型评测数据未公开。
 
 ## 项目结构
 
 ```text
 YF-Agent/
-├── main.py                       # 闲鱼在线客服入口
-├── xianyu_graph.py               # 图节点、意图路由与工具循环
-├── graph_state.py                # 共享状态定义
-├── tools_langgraph.py            # LangChain 工具包装
-├── context_manager.py            # SQLite 会话管理
-├── XianyuApis.py                 # 闲鱼 HTTP 接口
-├── XianyuAgent.py                # 早期多 Agent 实现
-├── tools.py                      # 早期工具分发器
-├── test_chat_graph.py            # LangGraph 多轮终端演示
-├── test_chat.py                  # 早期 Agent 演示
-├── query_hotel_price.py          # 独立逐晚查价
-├── api/intent_api.py             # Flask 意图识别接口原型
-├── utils/
-│   ├── hotel_tools.py            # 酒店匹配、采集与 Excel 保存
-│   └── xianyu_utils.py           # 平台消息辅助函数
-├── prompts/*_prompt_example.txt  # 公开提示词模板
-├── data/
-│   ├── hotels.xlsx               # 酒店名称 / ID 库
-│   ├── huazhu_hotels.xlsx        # 酒店采集数据
-│   └── hotel_prices.xlsx         # 房价查询结果
-├── models/
-│   ├── config.py                 # 模型路径、类别与超参数
-│   ├── data_preprocessing.py     # 数据清洗与合成训练样本
-│   ├── train_model.py            # BGE-M3 分类微调
-│   ├── inference.py              # 分类推理
-│   └── RAG Entity Extraction/    # 独立检索与实体抽取
-├── docs/DEMO.md                  # 展示步骤与讲解提纲
-├── .env.example                 # 无真实凭据的配置模板
-├── requirements.txt             # 项目依赖
-├── Dockerfile                   # 历史部署配置，需适配
-└── LICENSE                      # GPL-3.0
+├── booking_service.py       # LangGraph 预订图、并发、去重、恢复
+├── booking_slots.py         # 业务槽位更新与日期/预算校验
+├── session_store.py         # Redis 缓存、SQLite 状态与轨迹
+├── hotel_repository.py      # SQLite 酒店/逐日报价与 FAISS 排序
+├── live_price_provider.py   # 网页报价接入，明确未知房态
+├── agent_factory.py         # 演示/真实模型模式组装
+├── demo_web.py              # FastAPI 本地展示入口
+├── web/index.html           # 会话、槽位、候选与追踪工作台
+├── demo_booking.py          # 新业务工作流的终端演示
+├── run_xianyu.py            # 闲鱼消息接入与人工接管
+├── xianyu_api.py            # 平台 HTTP API
+├── context_manager.py      # 兼容已有商品与历史数据库
+├── xianyu_graph.py          # 原有生成式客服图
+├── langgraph_tools.py       # 原有图的工具注册
+├── demo_chat.py             # 原有生成式图终端入口
+├── legacy_agents.py         # 早期 Agent 实现
+├── utils/hotel_tools.py     # Playwright 酒店查价/采集
+├── models/                  # 分类训练、推理与独立预订信息抽取
+├── data/hotel_catalog.xlsx  # 9,999 家酒店原始目录
+├── images/                  # 实际运行截图
+├── tests/                   # 自动化业务与恢复断言
+├── scripts/capture_demo.py  # 浏览器交互与截图脚本
+├── docs/                    # 架构、部署、测试和展示说明
+├── requirements-core.txt   # 轻量工作流与展示依赖
+├── requirements-dev.txt    # 测试、Redis 模拟与截图依赖
+└── requirements.txt        # 完整模型与采集依赖
 ```
 
-> 本地外层目录可能名为 `YF-agent`，其内才是 Git 仓库 `YF-Agent`。以下命令均在包含 `main.py` 的仓库根目录执行。
+## 设计边界与后续方向
 
-## 快速开始
+- 当前会话锁与 Semaphore 面向**单进程服务**；横向扩展需要分布式会话锁、任务租约与共享检查点。
+- 消息去重结果持久化，但平台发送与数据库不能组成一个事务。发送记录降低普通重复回复风险，不承诺跨网络故障的严格 exactly-once。
+- 超时能够结束等待并留下检查点；线程中的同步工具不会被强制取消，读取型工具必须保持幂等。
+- 模型质量和真实酒店网页兼容性需要独立评测；当前截图没有调用真实店铺，也没有使用 BGE-M3 做效果验证。
+- 预订引导结束于人工确认，不自动下单或支付。容器默认运行离线工作台；完整模型模式仍需挂载权重和配置，Docker 构建尚未在本机验证。
 
-### 1. 获取代码与安装环境
+后续可补充真实领域测试集、低置信度转人工、酒店房态供应商接口、分布式执行与完整订单流程。
 
-使用 Python 3.10 或以上版本。磁盘及内存需求取决于本地模型，GPU 可选；CPU 可以推理，实际速度需自行测量。
+## 许可
 
-```powershell
- git clone https://github.com/link080/YF-Agent.git
- cd YF-Agent
- python -m venv .venv
- .\.venv\Scripts\Activate.ps1
- python -m pip install --upgrade pip
- python -m pip install -r requirements.txt
- python -m playwright install chromium
-```
-
-Linux / macOS 激活环境使用 `source .venv/bin/activate`。Linux 缺少浏览器系统库时可执行 `python -m playwright install --with-deps chromium`。
-
-### 2. 配置模型服务
-
-```powershell
-Copy-Item .env.example .env
-```
-
-编辑 `.env`：
-
-```dotenv
-API_KEY=your_api_key_here
-MODEL_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-MODEL_NAME=qwen-max
-COOKIES_STR=your_cookies_here
-```
-
-模型名以服务商账户实际可用的模型为准。终端演示需要前三项，闲鱼接入还需要有效 Cookie。不要提交真实凭据或会话数据库。
-
-### 3. 准备本地意图模型（必要）
-
-**只克隆代码并安装依赖不能直接完成客服对话。** 完整权重未上传；已有历史中只跟踪了部分配置和 tokenizer 文件。
-
-需要准备：
-
-- 基础 BGE-M3 模型，位置由 `models/config.py` 的 `MODEL_NAME` 指定。
-- `models/output/train_model/intent_model/` 中的微调 `pytorch_model.bin`、`intent_config.json` 和 tokenizer 文件。
-- `intent_config.json` 中的 `model_name` 指向实际基础模型；相对路径以 `models/` 为基准解析。
-
-当前基础模型路径使用特定 snapshot 目录，需按本机实际路径调整。可自行训练，或使用可信来源提供的匹配模型文件。训练步骤见后文。
-
-### 4. 先运行终端演示
-
-```powershell
-python test_chat_graph.py
-```
-
-脚本使用模拟酒店商品，不连接闲鱼账号。输入消息进行多轮对话，`/quit` 退出。启动时会删除并重建 `data/test_chat_history.db`，不要将真实数据放在该文件中。
-
-### 5. 接入闲鱼
-
-从本人已登录的闲鱼网页开发者工具 Network 请求中获取 Cookie，填入 `.env`。代码使用 `unb` 等字段识别账号，Cookie 不完整或过期会导致连接失败。
-
-```powershell
-python main.py
-```
-
-使用测试会话发送消息，观察意图、工具与回复日志。入口会交互式补全缺少的 API Key / Cookie，无人值守前应配置完整。
-
-## 配置说明
-
-模板见 [`.env.example`](.env.example)，以下默认值对应当前代码：
-
-- `API_KEY`：模型服务凭据，在线与终端 Agent 必需。
-- `MODEL_BASE_URL`：默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`。
-- `MODEL_NAME`：默认 `qwen-max`。
-- `COOKIES_STR`：闲鱼 Cookie，仅平台接入需要。
-- `LOG_LEVEL`：代码默认 `DEBUG`；模板设为 `INFO`，减少调试输出。
-- `TOGGLE_KEYWORDS`：默认中文句号 `。`，卖家发送匹配消息时切换当前会话人工 / AI 接管。
-- `MANUAL_MODE_TIMEOUT`：默认 `3600` 秒。
-- `SIMULATE_HUMAN_TYPING`：默认 `False`，设 `True` 开启模拟输入延迟。
-- `HEARTBEAT_INTERVAL` / `HEARTBEAT_TIMEOUT`：默认 `15` / `5` 秒。
-- `TOKEN_REFRESH_INTERVAL` / `TOKEN_RETRY_INTERVAL`：默认 `3600` / `300` 秒。
-- `MESSAGE_EXPIRE_TIME`：默认 `300000` **毫秒**。
-
-提示词优先读取 `prompts/<名称>.txt`，不存在时读取 `<名称>_example.txt`：
-
-- `price_prompt`：查价与价格回复。
-- `booking_prompt`：预订沟通。
-- `contect_prompt`：议价规则，保留代码中的现有拼写。
-- `default_prompt`：常规咨询。
-- `classify_prompt`：早期实现保留，主图使用本地分类模型。
-
-例如复制 `booking_prompt_example.txt` 为 `booking_prompt.txt` 再编辑。正式提示词被 Git 忽略，示例模板可公开。主图有缓存，修改提示词后重启程序。
-
-## 演示与项目展示
-
-完整展示提纲见 [docs/DEMO.md](docs/DEMO.md)。推荐按“业务问题 → 架构 → 对话 → 工具 → 边界”讲解。
-
-建议演示消息：
-
-1. “这家酒店附近交通方便吗？”——展示常规咨询。
-2. “全季上海虹桥火车站店，明天入住后天离店，多少钱？”——展示意图、日期参数和查价工具。
-3. “想住两晚，需要提供什么信息？”——展示多轮上下文与预订沟通。
-4. “能再便宜点吗？”——展示议价规则与业务底线。
-
-这些是输入样例，实际分类与回复取决于模型，价格取决于网页。演示前选用酒店库中确实存在的完整门店名，不将内置模拟商品中的库存和价格当成实时数据。
-
-关注日志中的 `意图识别`、`LLM 请求工具调用`、`[ToolNode] 调用工具` 与 `工具输出`。截图前遮盖真实用户消息、账号标识与凭据。
-
-### 独立逐晚查价
-
-```powershell
-python query_hotel_price.py 10 12 全季酒店
-```
-
-表示今天起第 10 天入住、第 12 天离店，查询两晚。脚本先执行参数查询，再进入交互模式，输入 `quit` 退出。完整门店名能提高匹配准确性。
-
-输出原始价格、按 **0.75 系数** 计算的演示价格及房型汇总。该系数是脚本固定计算规则，不代表酒店承诺的折扣；“合计”会叠加多个房型，不应当作单笔订单报价。
-
-## 模型训练与独立模块
-
-### 意图分类训练
-
-当前数据预处理从合成酒店语句构建有标签的小样本训练集，ECD 电商文本用于清洗与分析。旧模块 README 中的 HDBSCAN / UMAP 聚类描述不代表当前脚本实际执行逻辑。
-
-1. 准备基础 BGE-M3 模型，调整 `models/config.py` 的 `MODEL_NAME`。
-2. 如需 ECD 数据，按 `ECD_DATA_DIR` 准备；原始数据集未上传。
-3. 检查 `models/train_model.py` 开头固定的 `D:\config\...` 缓存路径，迁移机器时修改为可写路径。
-4. 在仓库根目录执行：
-
-```powershell
-python models/data_preprocessing.py
-python models/train_model.py
-python models/inference.py
-```
-
-预处理输出位于 `models/output/data_preprocessing/`，模型输出位于 `models/output/train_model/intent_model/`。依赖包含训练导入所需的 `scikit-learn`。
-
-当前未提供经验证的独立测试集报告；展示时可讲解训练与工程流程，不将代码注释中的时延或旧文档中的加速倍数当成实测指标。
-
-### 意图识别 HTTP API
-
-Flask 是此独立模块的额外依赖：
-
-```powershell
-python -m pip install flask
-python api/intent_api.py
-```
-
-提供 `GET /health`、`POST /predict`、`POST /predict_batch`。
-
-单条请求体：
-
-```json
-{"text": "我要订一间大床房"}
-```
-
-批量请求体：
-
-```json
-{"texts": ["房价多少", "能优惠吗", "有停车场吗"]}
-```
-
-API 使用 Windows 相对模型路径，应从仓库根目录运行；Linux 需适配。默认监听 `0.0.0.0:5000` 并开启 debug，属于开发原型；公开部署前需调整监听、调试和访问控制。
-
-### RAG 预订信息抽取
-
-独立目录提供 FAISS 酒店名检索、中文日期解析与 Qwen 辅助抽取，返回酒店名、入住 / 离店日期和置信度。
-
-检查该模块 `config.py` 中的 BGE、Qwen、数据集和索引路径，按需构建索引：
-
-```powershell
-Set-Location "models/RAG Entity Extraction"
-python build_hotel_index.py
-python main.py
-```
-
-现有索引不能代替模型权重。此处 `main.py` 是独立演示，与仓库根目录的入口不同；接入主图属于后续扩展工作。
-
-## 扩展开发
-
-- **新增工具**：在 `utils/hotel_tools.py` 实现函数，在 `tools_langgraph.py` 添加 `@tool` 包装并注册到 `_tools`，明确描述与参数。
-- **调整策略**：修改提示词；改变分类类别时同步修改训练数据、分类配置和 `route_intent`。
-- **更换模型服务**：修改 `.env` 并检查工具调用和 `extra_body` 参数兼容性。
-- **接入检索**：将独立 RAG 抽取封装成节点或工具，明确低置信度与日期不完整时的处理。
-- **完善部署**：补充领域评测、工具异常兜底、依赖锁定与部署验证。
-
-## 常见问题与当前限制
-
-### 找不到模型文件
-
-检查微调目录的 `intent_config.json`、`pytorch_model.bin` 和基础模型路径。配置存在不意味着权重已就绪；本地微调权重约 2.27 GB，被忽略且未上传。
-
-### 缺包或浏览器
-
-在当前虚拟环境安装 `requirements.txt` 和 Playwright Chromium。训练 / 推理导入 `scikit-learn`；酒店工具导入提供 `Stealth` 类的 `playwright-stealth`。Flask 仅 API 模块需要。
-
-### 查不到酒店或价格
-
-核对 Excel 数据、完整门店名与日期，检查网络及验证页。字符串相似度匹配不能保证同名门店选择正确，应核对返回酒店。网页结构、反爬策略和动态加载变化可能导致失败。
-
-### 模型服务报参数错误
-
-检查当前模型、工具调用、`enable_thinking` 与 `enable_search` 的支持情况。服务商扩展参数可在 `xianyu_graph.py` 的 `_build_llm` 中调整。
-
-### 工具调用达到上限
-
-当前图达到循环上限后可能没有生成最终 `response`，从而触发异常。该边界仍需增加明确兜底回复；展示前试跑工具路径，并准备采集失败时的替代演示。
-
-### `/reset` 是否清空历史？
-
-当前终端脚本只重新创建管理器，数据库记录仍可能保留。完整重置可退出后重新启动，启动过程会删除测试数据库。
-
-### Docker 可以直接使用吗？
-
-当前配置来自较早版本，尚未适配主图：Compose 使用第三方预构建镜像，不构建本地代码；Dockerfile 引用不存在的 `tech_prompt_example.txt`，未复制完整 LangGraph / 模型模块；Alpine 与机器学习及浏览器依赖还需适配。因此推荐本地 Python 环境，Docker 文件作为历史参考。
-
-### 是否能自动完成订房？
-
-预订分支实现信息沟通和工具查询，未接入真实下单、支付和履约。回复过滤是简单关键词规则，正式使用还需验证业务质量。
-
-## 许可与致谢
-
-项目遵循 [GNU GPL v3](LICENSE)，基于既有闲鱼客服代码与酒店业务扩展，使用 LangGraph / LangChain、PyTorch、Transformers、BGE-M3、FAISS、Playwright 和 OpenAI Python SDK 等组件。
-
-模型、第三方数据与平台接口分别遵循各自许可和使用条款。欢迎通过 Issue 提供可复现问题、领域测试样例和改进建议。
+遵循 [GNU GPL v3](LICENSE)。项目使用 LangGraph、Redis、SQLite、FAISS、BGE-M3、PyTorch、Transformers 和 Playwright 等组件；第三方模型、数据和平台接口遵循各自许可及使用条款。

@@ -21,7 +21,7 @@ ECD_DATA_DIR = os.path.join(
     "ECD_sample",
 )
 
-# 处理后的数据路径 (data_preprocessing.py 输出)
+# 处理后的数据路径 (prepare_intent_dataset.py 输出)
 BASE_OUTPUT_DIR = os.path.join(PROJECT_DIR, "output")
 DATA_PREPROC_DIR = os.path.join(BASE_OUTPUT_DIR, "data_preprocessing")
 CLEANED_DATA_PATH = os.path.join(DATA_PREPROC_DIR, "cleaned_data.json")
@@ -52,7 +52,7 @@ TRAIN_WEIGHT_DECAY = 0.01
 TRAIN_WARMUP_RATIO = 0.1
 TRAIN_MAX_GRAD_NORM = 1.0
 
-# 模型保存路径 (train_model.py 输出)
+# 模型保存路径 (train_intent_classifier.py 输出)
 TRAIN_MODEL_DIR = os.path.join(BASE_OUTPUT_DIR, "train_model")
 MODEL_SAVE_DIR = os.path.join(TRAIN_MODEL_DIR, "intent_model")
 CHECKPOINT_DIR = os.path.join(TRAIN_MODEL_DIR, "checkpoints")

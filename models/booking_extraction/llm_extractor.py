@@ -5,7 +5,7 @@ import re
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-import config
+import booking_config as config
 
 SYSTEM_PROMPT = """你是一个酒店预订信息抽取助手。
 

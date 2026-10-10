@@ -6,14 +6,15 @@ import os
 import websockets
 from loguru import logger
 from dotenv import load_dotenv, set_key
-from XianyuApis import XianyuApis
+from xianyu_api import XianyuApis
 import sys
 import random
+import hashlib
 
 
 
 from utils.xianyu_utils import generate_mid, generate_uuid, trans_cookies, generate_device_id, decrypt
-from xianyu_graph import xianyu_graph
+from agent_factory import create_agent
 from context_manager import ChatContextManager
 
 
@@ -28,6 +29,8 @@ class XianyuLive:
         self.device_id = generate_device_id(self.myid)
         self.context_manager = ChatContextManager()
         self._chat_locks: dict[str, asyncio.Lock] = {}
+        self._chat_lock_users = {}
+        self.booking_agent = None
         
         # 心跳相关配置
         self.heartbeat_interval = int(os.getenv("HEARTBEAT_INTERVAL", "15"))  # 心跳间隔，默认15秒
@@ -480,12 +483,18 @@ class XianyuLive:
             if chat_id not in self._chat_locks:
                 self._chat_locks[chat_id] = asyncio.Lock()
             lock = self._chat_locks[chat_id]
-
-            async with lock:
-                await self._process_chat_message(
-                    message, send_user_name, send_user_id,
-                    send_message, item_id, chat_id, websocket
-                )
+            self._chat_lock_users[chat_id] = self._chat_lock_users.get(chat_id, 0) + 1
+            try:
+                async with lock:
+                    await self._process_chat_message(
+                        message, send_user_name, send_user_id,
+                        send_message, item_id, chat_id, websocket
+                    )
+            finally:
+                self._chat_lock_users[chat_id] -= 1
+                if not self._chat_lock_users[chat_id]:
+                    self._chat_lock_users.pop(chat_id, None)
+                    self._chat_locks.pop(chat_id, None)
 
         except Exception as e:
             logger.error(f"handle_message 异常: {e}")
@@ -522,35 +531,36 @@ class XianyuLive:
 
             item_description = f"当前商品的信息如下：{self.build_item_description(item_info)}"
 
-            # 获取对话上下文
-            context = self.context_manager.get_context_by_chat(chat_id)
-            formatted_context = "\n".join(
-                f"{m['role']}: {m['content']}"
-                for m in context if m["role"] in ("user", "assistant")
-            )
-
-            # 通过 LangGraph 生成回复
-            result = await xianyu_graph.ainvoke({
-                "user_msg": send_message,
-                "item_desc": item_description,
-                "context": context,
-                "formatted_context": formatted_context,
-            })
+            payload = message.get("1", {})
+            # Prefer a stable platform message ID; fallback includes timestamp, sender
+            # and content, so different same-text messages are not deduplicated.
+            message_id = payload.get("messageId") or payload.get("msgId")
+            if not message_id:
+                message_id = hashlib.sha256(json.dumps(
+                    [chat_id, send_user_id, payload.get("5"), send_message],
+                    ensure_ascii=False).encode()).hexdigest()
+            message_id = str(message_id)
+            result = await self.booking_agent.handle(chat_id, message_id, send_message)
             bot_reply = result["response"]
             detected_intent = result.get("intent", "常规咨询")
+            if result["duplicate"] and self.booking_agent.store.delivery_sent(chat_id, message_id):
+                logger.info("重复平台消息已跳过")
+                return
 
             if bot_reply == "-":
                 logger.info(f"[无需回复] 用户 {send_user_name} 的消息被识别为无需回复类型")
                 return
 
-            self.context_manager.add_message_by_chat(chat_id, send_user_id, item_id, "user", send_message)
+            if not result["duplicate"]:
+                self.context_manager.add_message_by_chat(chat_id, send_user_id, item_id, "user", send_message)
 
-            if detected_intent == "议价砍价":
+            if detected_intent == "议价砍价" and not result["duplicate"]:
                 self.context_manager.increment_bargain_count_by_chat(chat_id)
                 bargain_count = self.context_manager.get_bargain_count_by_chat(chat_id)
                 logger.info(f"用户 {send_user_name} 对商品 {item_id} 的议价次数: {bargain_count}")
 
-            self.context_manager.add_message_by_chat(chat_id, self.myid, item_id, "assistant", bot_reply)
+            if not result["duplicate"]:
+                self.context_manager.add_message_by_chat(chat_id, self.myid, item_id, "assistant", bot_reply)
             logger.info(f"机器人回复: {bot_reply}")
 
             if self.simulate_human_typing:
@@ -561,6 +571,7 @@ class XianyuLive:
                 await asyncio.sleep(total_delay)
 
             await self.send_msg(websocket, chat_id, send_user_id, bot_reply)
+            self.booking_agent.store.mark_delivery(chat_id, message_id)
 
         except Exception as e:
             logger.error(f"处理消息时发生错误: {str(e)}")
@@ -788,4 +799,9 @@ if __name__ == '__main__':
     cookies_str = os.getenv("COOKIES_STR")
     xianyuLive = XianyuLive(cookies_str)
     # 常驻进程
-    asyncio.run(xianyuLive.main())
+    async def run():
+        async with create_agent(demo=False) as agent:
+            xianyuLive.booking_agent = agent
+            await xianyuLive.main()
+
+    asyncio.run(run())

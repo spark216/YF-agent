@@ -6,7 +6,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-import config
+import booking_config as config
 
 
 class HotelIndex:

@@ -1,6 +1,6 @@
 """
 API意图识别服务
-基于 models/inference.py 构建的意图识别接口
+基于 models/intent_predictor.py 构建的意图识别接口
 """
 import sys
 import os
@@ -9,7 +9,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "models"))
 
 from flask import Flask, request, jsonify
-from inference import IntentPredictor
+from intent_predictor import IntentPredictor
 
 app = Flask(__name__)
 

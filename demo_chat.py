@@ -1,14 +1,15 @@
 """
-终端多轮对话测试脚本
+终端多轮对话测试脚本（LangGraph 版本）
 模拟实际运行环境，在终端中进行对话测试
 """
 import os
 import sys
 import json
+import asyncio
 from dotenv import load_dotenv
 from loguru import logger
 
-from XianyuAgent import XianyuReplyBot
+from xianyu_graph import xianyu_graph
 from context_manager import ChatContextManager
 
 
@@ -39,7 +40,7 @@ def load_config():
 
 def build_item_description() -> str:
     """构建测试用商品信息描述"""
-    return json.dumps({
+    return "当前商品的信息如下：" + json.dumps({
         "title": "全季酒店上海虹桥火车站店",
         "desc": "华住会旗下全季品牌酒店，位于上海虹桥火车站附近，交通便利",
         "price_range": "¥300-500",
@@ -55,24 +56,49 @@ def build_item_description() -> str:
 def print_banner():
     """打印欢迎信息"""
     print("=" * 60)
-    print("  闲鱼智能客服 Agent - 终端对话测试")
+    print("  闲鱼智能客服 Agent - 终端对话测试 (LangGraph)")
     print("=" * 60)
-    print("输入 /reset 重置对话 | 输入 /quit 退出")
+    print("输入消息直接对话 | /reset 重置 | /quit 退出")
     print("-" * 60)
 
 
-def main():
+async def generate_reply(context_manager, chat_id, user_msg, item_desc):
+    """通过 LangGraph 生成回复，带超时保护"""
+    context = context_manager.get_context_by_chat(chat_id)
+    formatted_context = "\n".join(
+        f"{m['role']}: {m['content']}"
+        for m in context if m["role"] in ("user", "assistant")
+    )
+
+    logger.debug(f"开始图推理...")
+    result = await asyncio.wait_for(
+        xianyu_graph.ainvoke({
+            "user_msg": user_msg,
+            "item_desc": item_desc,
+            "context": context,
+            "formatted_context": formatted_context,
+        }),
+        timeout=120,
+    )
+    return result["response"], result.get("intent", "常规咨询")
+
+
+async def run_chat():
+    """异步对话主循环"""
     setup_logger("DEBUG")
     load_config()
 
-    # 初始化 Bot（使用独立的测试数据库）
-    bot = XianyuReplyBot()
+    # 清空历史对话数据库
+    db_path = "data/demo_chat_history.db"
+    if os.path.exists(db_path):
+        os.remove(db_path)
+        logger.info(f"已清空历史对话: {db_path}")
+
     context_manager = ChatContextManager(
         max_history=100,
-        db_path="data/test_chat_history.db"
+        db_path=db_path
     )
 
-    # 对话参数
     chat_id = "test_chat_001"
     user_id = "test_user_001"
     item_id = "test_item_001"
@@ -82,9 +108,12 @@ def main():
     logger.info(f"会话已创建: {chat_id}")
     print()
 
+    loop = asyncio.get_event_loop()
+
     while True:
         try:
-            user_msg = input("你: ").strip()
+            # 在线程池中运行 input() 避免阻塞事件循环
+            user_msg = await loop.run_in_executor(None, lambda: input("你: ").strip())
         except (EOFError, KeyboardInterrupt):
             print("\n再见!")
             break
@@ -92,36 +121,37 @@ def main():
         if not user_msg:
             continue
 
-        # 控制命令
         if user_msg.lower() in ("/quit", "/exit"):
             print("退出测试")
             break
 
         if user_msg == "/reset":
-            # 清空当前会话
             context_manager = ChatContextManager(
                 max_history=100,
-                db_path="data/test_chat_history.db"
+                db_path="data/demo_chat_history.db"
             )
             logger.info(f"对话已重置: {chat_id}")
             print("[系统] 对话已重置，上下文已清空\n")
             continue
 
-        # 获取对话上下文
-        context = context_manager.get_context_by_chat(chat_id)
-
         # 生成回复
         try:
-            bot_reply = bot.generate_reply(
-                user_msg=user_msg,
-                item_desc=item_desc,
-                context=context
+            logger.info(f"发送消息: {user_msg}")
+            bot_reply, detected_intent = await generate_reply(
+                context_manager, chat_id, user_msg, item_desc
             )
+            logger.info(f"意图: {detected_intent}")
+        except asyncio.TimeoutError:
+            logger.error("回复超时（120秒）")
+            bot_reply = "抱歉，处理超时，请稍后再试"
+            detected_intent = "error"
         except Exception as e:
             logger.error(f"生成回复失败: {e}")
+            import traceback
+            traceback.print_exc()
             bot_reply = f"抱歉，系统出现错误: {e}"
+            detected_intent = "error"
 
-        # 检查是否需要回复
         if bot_reply == "-":
             logger.info("消息被识别为无需回复类型")
             print("[系统] 无需回复\n")
@@ -131,15 +161,14 @@ def main():
         context_manager.add_message_by_chat(chat_id, user_id, item_id, "user", user_msg)
         context_manager.add_message_by_chat(chat_id, "seller", item_id, "assistant", bot_reply)
 
-        # 检查议价意图
-        if bot.last_intent == "price":
+        if detected_intent == "议价砍价":
             context_manager.increment_bargain_count_by_chat(chat_id)
-            bargain_count = context_manager.get_bargain_count_by_chat(chat_id)
-            logger.info(f"议价次数: {bargain_count}")
 
-        # 输出回复
-        print(f"\n客服: {bot_reply}")
-        print(f"意图: {bot.last_intent}\n")
+        print(f"\n客服: {bot_reply}\n")
+
+
+def main():
+    asyncio.run(run_chat())
 
 
 if __name__ == "__main__":

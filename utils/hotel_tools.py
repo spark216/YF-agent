@@ -22,8 +22,8 @@ def _run_async(coro):
         return pool.submit(asyncio.run, coro).result()
 
 
-DEFAULT_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "huazhu_hotels.xlsx")
-HOTELS_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "hotels.xlsx")
+DEFAULT_EXCEL_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "hotel_crawl_results.xlsx")
+HOTELS_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "hotel_catalog.xlsx")
 
 # 华住会品牌词典（按长度降序，优先匹配最长品牌）
 HUAZHU_BRANDS = sorted([
@@ -108,10 +108,10 @@ def search_hotel_price(hotel_name: str, check_in: str, check_out: str) -> str:
     """
     from playwright.async_api import async_playwright
 
-    # 1. 从 hotels.xlsx 查找酒店ID
+    # 1. 从 hotel_catalog.xlsx 查找酒店ID
     hotel_db = _load_hotel_db()
     if not hotel_db:
-        return json.dumps({"error": "酒店ID数据库为空，请确认 data/hotels.xlsx 存在"}, ensure_ascii=False)
+        return json.dumps({"error": "酒店ID数据库为空，请确认 data/hotel_catalog.xlsx 存在"}, ensure_ascii=False)
 
     matched = _find_hotel_by_name(hotel_db, hotel_name)
     if not matched:
@@ -233,7 +233,7 @@ def search_hotel_price(hotel_name: str, check_in: str, check_out: str) -> str:
 # ---------- 辅助函数：酒店ID数据库查找 ----------
 
 def _load_hotel_db(path: str = HOTELS_DB_PATH) -> List[Dict[str, str]]:
-    """加载 hotels.xlsx 酒店ID数据库，返回 [{酒店名, 酒店ID, 城市名, 城市ID, 品牌名, 品牌类型}]"""
+    """加载 hotel_catalog.xlsx 酒店ID数据库，返回 [{酒店名, 酒店ID, 城市名, 城市ID, 品牌名, 品牌类型}]"""
     if not os.path.exists(path):
         logger.warning(f"[search_hotel_price] 酒店ID数据库不存在: {path}")
         return []
@@ -277,7 +277,7 @@ def _save_price_to_excel(hotel_name: str, hotel_id: str, check_in: str, check_ou
                          path: str = None) -> None:
     """保存查价结果到 Excel，同酒店同日期覆盖旧数据，不同追加"""
     if path is None:
-        path = os.path.join(os.path.dirname(__file__), "..", "data", "hotel_prices.xlsx")
+        path = os.path.join(os.path.dirname(__file__), "..", "data", "hotel_price_results.xlsx")
 
     headers = ["酒店名", "酒店ID", "入住日期", "离店日期", "房型名", "价格", "查询时间"]
     query_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

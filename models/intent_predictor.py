@@ -20,8 +20,8 @@ import numpy as np
 from transformers import AutoTokenizer, AutoConfig
 from transformers.modeling_outputs import TokenClassifierOutput
 
-import config
-from train_model import IntentClassifier
+import intent_config as config
+from train_intent_classifier import IntentClassifier
 
 
 def _resolve_model_path(model_name: str) -> str:

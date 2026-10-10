@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-import config
+import booking_config as config
 from hotel_index import HotelIndex
 
 

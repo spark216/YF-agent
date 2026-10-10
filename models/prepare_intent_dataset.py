@@ -16,7 +16,7 @@ import json
 import re
 import random
 
-import config
+import intent_config as config
 
 
 # ============================================================
@@ -1899,7 +1899,7 @@ def main():
     print(f"  总数据: {len(cleaned_data)} 条 (含 ECD + 合成)")
     print(f"  标注数据: {len(sampled_data)} 条 (全部合成数据)")
     print("=" * 60)
-    print("\n  下一步: 运行 python train_model.py 进行模型微调")
+    print("\n  下一步: 运行 python train_intent_classifier.py 进行模型微调")
 
 
 if __name__ == "__main__":

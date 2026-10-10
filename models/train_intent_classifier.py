@@ -2,7 +2,7 @@
 脚本2: BGE-M3 微调训练 - 意图分类模型
 
 流程:
-  1. 加载标注数据集 (data_preprocessing.py 输出)
+  1. 加载标注数据集 (prepare_intent_dataset.py 输出)
   2. 构建 PyTorch Dataset + DataLoader
   3. 加载 BGE-M3 + 分类头
   4. 微调训练 (Early Stopping + 学习率 Warmup)
@@ -31,7 +31,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, AutoModel, get_linear_schedule_with_warmup
 from sklearn.metrics import classification_report, accuracy_score
 
-import config
+import intent_config as config
 
 
 # ============================================================
@@ -358,7 +358,7 @@ def train_model():
     print(f"  最终准确率: {acc:.4f}")
     print(f"  模型保存路径: {config.MODEL_SAVE_DIR}")
     print("=" * 60)
-    print("\n  下一步: 运行 python inference.py 进行推理测试")
+    print("\n  下一步: 运行 python intent_predictor.py 进行推理测试")
 
 
 def evaluate(model, data_loader, device):

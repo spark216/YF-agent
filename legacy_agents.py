@@ -5,10 +5,10 @@ import os
 from datetime import datetime
 from openai import OpenAI
 from loguru import logger
-from tools import get_tool_schema, execute_tool, has_tool
+from legacy_tool_dispatcher import get_tool_schema, execute_tool, has_tool
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "models"))
-from inference import predict_intent
+from intent_predictor import predict_intent
 
 
 def _clean_content(text: str) -> str:
@@ -71,7 +71,7 @@ class XianyuReplyBot:
             # 加载价格提示词
             self.price_prompt = load_prompt_content("price_prompt")
             # 加载技术提示词
-            self.tech_prompt = load_prompt_content("contect_prompt")
+            self.tech_prompt = load_prompt_content("bargain_prompt")
             # 加载预订提示词
             self.booking_prompt = load_prompt_content("booking_prompt")
             # 加载默认提示词

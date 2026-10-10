@@ -1,4 +1,4 @@
-"""LangGraph 图定义 — 替代 XianyuAgent 的 Agent 编排"""
+"""LangGraph 图定义 — 替代 legacy_agents 的 Agent 编排"""
 import asyncio
 import os
 import re
@@ -12,11 +12,10 @@ from langgraph.prebuilt import ToolNode
 from loguru import logger
 
 from graph_state import XianyuState
-from tools_langgraph import get_langgraph_tools
+from langgraph_tools import get_langgraph_tools
 
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "models"))
-from inference import predict_intent
 
 
 # ── 自定义 ToolNode 包装器 ─────────────────────────────────────
@@ -122,6 +121,7 @@ def _build_llm(temperature: float, use_tools: bool, enable_search: bool):
 # ── 节点函数 ─────────────────────────────────────────────────
 
 async def intent_detection_node(state: XianyuState) -> dict:
+    from intent_predictor import predict_intent
     cleaned = re.sub(r"[^\w一-龥]", "", state["user_msg"])
     result = await asyncio.to_thread(predict_intent, cleaned)
     intent = result["intent"]
@@ -156,7 +156,7 @@ async def prepare_booking_node(state: XianyuState) -> dict:
 
 
 async def prepare_bargain_node(state: XianyuState) -> dict:
-    prompt = _load_prompt("contect_prompt")
+    prompt = _load_prompt("bargain_prompt")
     sys_content = _build_system_msg(prompt, state["item_desc"],
                                     state["formatted_context"])
     return {
@@ -192,7 +192,7 @@ async def llm_call_node(state: XianyuState) -> dict:
 
 
 async def safety_filter_node(state: XianyuState) -> dict:
-    return {"response": _safe_filter(state["response"])}
+    return {"response": _safe_filter(state.get("response") or "工具调用达到上限，请补充更明确的酒店和日期后重试。")}
 
 
 async def no_reply_node(state: XianyuState) -> dict:

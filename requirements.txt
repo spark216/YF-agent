@@ -1,5 +1,5 @@
 # 核心依赖
-openai==1.65.5
+openai>=1.104.2,<3
 websockets==13.1
 loguru==0.7.3
 python-dotenv==1.0.1
@@ -12,7 +12,7 @@ openpyxl>=3.0.0
 torch>=2.0.0
 transformers>=4.30.0
 sentence-transformers>=2.2.2
-numpy>=1.24.0
+numpy>=1.25,<2
 accelerate>=0.20.0
 
 # RAG 酒店向量检索
@@ -30,6 +30,4 @@ pandas>=1.5.0
 scikit-learn
 
 # LangGraph Agent 编排
-langgraph>=0.2.0
-langchain-core>=0.3.0
-langchain-openai>=0.2.0
+-r requirements-core.txt

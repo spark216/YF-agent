@@ -5,7 +5,7 @@ import re
 import sys
 import time
 
-import config
+import booking_config as config
 from date_parser import parse_date
 from hotel_index import get_hotel_index
 from llm_extractor import get_extractor
