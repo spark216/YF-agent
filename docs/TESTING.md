@@ -50,3 +50,7 @@ python scripts/capture_demo.py --channel msedge
 ## 尚未验证的外部链路
 
 本次未登录真实闲鱼店铺、向买家发消息或创建订单。未运行 BGE-M3 质量评测，未连接真实 Redis 服务，也未构建 Docker 镜像。真实网页查询受页面结构、网络与验证页影响，部署后需单独联调。
+
+## 持续集成
+
+GitHub Actions 使用 Python 3.11 和 Redis 7.4，运行全部业务断言以及真实 Redis TTL / 状态回填测试。本地没有 `REDIS_TEST_URL` 时真实服务测试明确跳过；本机的 fakeredis 结果不代替这项集成测试。
