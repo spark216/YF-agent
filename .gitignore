@@ -1,5 +1,7 @@
 # 环境变量文件（包含敏感信息）
 .env
+.env.*
+!.env.example
 # 提示词文件
 *_prompt.txt
 # Python缓存文件
@@ -60,3 +62,14 @@ dataset/
 models--BAAI--bge-m3/
 models--Qwen2.5-1.5B-Instruct/
 output/
+
+# Local model weights and checkpoints
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+
+# Browser debugging output (already tracked files remain tracked)
+data/debug_*.png
+images/debug_*.png

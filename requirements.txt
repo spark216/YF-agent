@@ -5,6 +5,7 @@ loguru==0.7.3
 python-dotenv==1.0.1
 requests==2.32.3
 playwright>=1.40.0
+playwright-stealth>=2.0.0
 openpyxl>=3.0.0
 
 # 意图识别模型（BGE-M3 微调）
@@ -26,6 +27,7 @@ regex>=2023.0.0
 
 # 数据处理
 pandas>=1.5.0
+scikit-learn
 
 # LangGraph Agent 编排
 langgraph>=0.2.0

@@ -8,6 +8,7 @@ import difflib
 import json
 import os
 import re
+from playwright_stealth import Stealth
 from typing import Any, Dict, List, Optional
 
 
@@ -157,6 +158,7 @@ def search_hotel_price(hotel_name: str, check_in: str, check_out: str) -> str:
                 "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
             })
             page = await context.new_page()
+            await Stealth().apply_stealth_async(page)
 
             logger.debug(f"[search_hotel_price] 访问详情页: {detail_url}")
             debug_dir = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -354,6 +356,7 @@ def crawl_hotels(city: str, check_in: str, check_out: str,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             })
             page = await context.new_page()
+            await Stealth().apply_stealth_async(page)
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
             while current_page <= max_pages:

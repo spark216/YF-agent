@@ -19,6 +19,28 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "models"))
 from inference import predict_intent
 
 
+# ── 自定义 ToolNode 包装器 ─────────────────────────────────────
+
+_tool_node: ToolNode = None
+
+
+def _init_tool_node(tools):
+    global _tool_node
+    _tool_node = ToolNode(tools)
+
+
+async def logged_tool_node(state: XianyuState) -> dict:
+    last_msg = state["messages"][-1]
+    if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
+        for tc in last_msg.tool_calls:
+            logger.debug(f"[ToolNode] 调用工具: {tc.get('name', '?')}, 参数: {tc.get('args', {})}")
+    result = await _tool_node.ainvoke(state)
+    if "messages" in result:
+        for msg in result["messages"]:
+            logger.debug(f"[ToolNode] 工具输出: {msg.content[:200]}")
+    return result
+
+
 # ── Prompt 缓存 ──────────────────────────────────────────────
 
 _PROMPTS: Dict[str, str] = {}
@@ -79,16 +101,18 @@ def _build_system_msg(prompt: str, item_desc: str, formatted_context: str,
 
 
 def _build_llm(temperature: float, use_tools: bool, enable_search: bool):
-    kwargs = {}
+    extra_body = {}
+    extra_body["enable_thinking"] = False
     if enable_search:
-        kwargs["extra_body"] = {"enable_search": True}
+        extra_body["enable_search"] = True
     model = ChatOpenAI(
         model=os.getenv("MODEL_NAME", "qwen-max"),
         openai_api_base=os.getenv("MODEL_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
         openai_api_key=os.getenv("API_KEY"),
         temperature=temperature,
         max_tokens=500,
-        model_kwargs={"top_p": 0.8, **kwargs},
+        top_p=0.8,
+        extra_body=extra_body if extra_body else None,
     )
     if use_tools:
         model = model.bind_tools(get_langgraph_tools())
@@ -160,7 +184,7 @@ async def llm_call_node(state: XianyuState) -> dict:
     tool_loop_count = state.get("tool_loop_count", 0) + 1
 
     if hasattr(response, "tool_calls") and response.tool_calls:
-        logger.debug(f"LLM 请求工具调用 (第{tool_loop_count}轮)")
+        logger.debug(f"LLM 请求工具调用 (第{tool_loop_count}轮): {response.tool_calls}")
         return {"messages": [response], "tool_loop_count": tool_loop_count}
 
     content = _safe_filter(response.content or "")
@@ -203,7 +227,7 @@ def should_call_tools(state: XianyuState) -> str:
 # ── 构建图 ───────────────────────────────────────────────────
 
 def _build_graph() -> StateGraph:
-    tool_node = ToolNode(get_langgraph_tools())
+    _init_tool_node(get_langgraph_tools())
 
     g = StateGraph(XianyuState)
 
@@ -213,7 +237,7 @@ def _build_graph() -> StateGraph:
     g.add_node("prepare_bargain", prepare_bargain_node)
     g.add_node("prepare_consult", prepare_consult_node)
     g.add_node("llm_call", llm_call_node)
-    g.add_node("tools", tool_node)
+    g.add_node("tools", logged_tool_node)
     g.add_node("safety_filter", safety_filter_node)
     g.add_node("no_reply", no_reply_node)
 
