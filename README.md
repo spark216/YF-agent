@@ -4,7 +4,7 @@
 [![LangGraph](https://img.shields.io/badge/Workflow-LangGraph-166534)](https://github.com/langchain-ai/langgraph)
 [![Redis](https://img.shields.io/badge/Session-Redis%20%2B%20SQLite-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![FAISS](https://img.shields.io/badge/Retrieval-BGE--M3%20%2B%20FAISS-3451B2)](https://github.com/facebookresearch/faiss)
-[![Tests](https://github.com/link080/YF-Agent/actions/workflows/tests.yml/badge.svg)](https://github.com/link080/YF-Agent/actions/workflows/tests.yml)
+[![Tests](https://github.com/spark216/YF-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/spark216/YF-agent/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue)](LICENSE)
 
 **围绕酒店预订咨询，构建可维护多轮状态、可更新检索条件、可追踪与恢复任务的客服 Agent。**
@@ -102,8 +102,8 @@ flowchart TD
 推荐 Python 3.10—3.12，使用独立虚拟环境。离线模式无需 API Key、闲鱼 Cookie 或模型权重。
 
 ```powershell
-git clone https://github.com/link080/YF-Agent.git
-cd YF-Agent
+git clone https://github.com/spark216/YF-agent.git
+cd YF-agent
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
@@ -193,7 +193,7 @@ python run_xianyu.py
 
 ## 测试与可复现证据
 
-本地运行：**31 项自动测试通过，6 轮浏览器交互断言通过，生成 5 张真实页面截图**。GitHub Actions 在 Python 3.11 + 真实 Redis 7.4 下 **32 项测试全部通过**，包含缓存过期与持久状态回填。[查看本次 CI 记录](https://github.com/link080/YF-Agent/actions/runs/38026248817)。本机没有真实 Redis 时，该集成项明确跳过。
+本地运行：**31 项自动测试通过，6 轮浏览器交互断言通过，生成 5 张真实页面截图**。GitHub Actions 在 Python 3.11 + 真实 Redis 7.4 下 **32 项测试全部通过**，包含缓存过期与持久状态回填。当前仓库的持续集成记录见 [GitHub Actions](https://github.com/spark216/YF-agent/actions)。本机没有真实 Redis 时，该集成项明确跳过。
 
 覆盖需求缺失、城市/日期/预算/房型修改、选择后修改、无匹配、缺少某晚房态、售罄、消息重复、并发上限、Redis TTL/过期/故障/旧缓存、有限重试、工具超时、服务重启恢复和过期任务拒绝。
 
