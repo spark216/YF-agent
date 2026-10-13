@@ -5,6 +5,7 @@ import hashlib
 import json
 import sqlite3
 import threading
+import time
 from datetime import date, timedelta
 from pathlib import Path
 from contextlib import contextmanager
@@ -61,6 +62,10 @@ class HotelRepository:
                     PRIMARY KEY(hotel_id,night,room_type));
                 CREATE INDEX IF NOT EXISTS idx_offers_filter ON offers(night,room_type,price);
             """)
+            columns = {row[1] for row in db.execute("PRAGMA table_info(offers)")}
+            for column in ("observed_at", "valid_until"):
+                if column not in columns:
+                    db.execute(f"ALTER TABLE offers ADD COLUMN {column} REAL")
 
     @contextmanager
     def connect(self):
@@ -97,11 +102,13 @@ class HotelRepository:
         with self.connect() as db:
             return [dict(row) for row in db.execute("SELECT * FROM hotels ORDER BY id")]
 
-    def put_offer(self, hotel_id, night, room_type, price, remaining, source="live"):
+    def put_offer(self, hotel_id, night, room_type, price, remaining, source="live", ttl=900):
         with self.connect() as db:
             assert db.execute("SELECT id FROM hotels WHERE id=?", (hotel_id,)).fetchone(), "Unknown hotel ID"
-            db.execute("INSERT INTO offers VALUES(?,?,?,?,?,?,?) ON CONFLICT(hotel_id,night,room_type) DO UPDATE SET price=excluded.price,remaining=excluded.remaining,source=excluded.source,updated=excluded.updated",
-                       (hotel_id, night, room_type, price, remaining, source, date.today().isoformat()))
+            if ttl <= 0:
+                raise ValueError("Offer TTL must be positive")
+            db.execute("INSERT INTO offers(hotel_id,night,room_type,price,remaining,source,updated,observed_at,valid_until) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(hotel_id,night,room_type) DO UPDATE SET price=excluded.price,remaining=excluded.remaining,source=excluded.source,updated=excluded.updated,observed_at=excluded.observed_at,valid_until=excluded.valid_until",
+                       (hotel_id, night, room_type, price, remaining, source, date.today().isoformat(), time.time(), time.time() + ttl))
 
     def build_index(self):
         hotels = self.catalog()
@@ -147,16 +154,22 @@ class HotelRepository:
             rows = db.execute("""
                 SELECT h.id,h.name,h.city,h.brand,o.room_type,
                        SUM(o.price) total_price,MAX(o.price) max_nightly_price,
-                       MIN(o.remaining) remaining,GROUP_CONCAT(DISTINCT o.source) sources
+                       MIN(o.remaining) remaining,GROUP_CONCAT(DISTINCT o.source) sources,
+                       MIN(o.valid_until) valid_until,MAX(o.observed_at) observed_at
                 FROM hotels h JOIN offers o ON h.id=o.hotel_id
-                WHERE h.city=? AND o.night>=? AND o.night<? AND o.room_type=?
+                WHERE h.city=? AND o.night>=? AND o.night<? AND o.room_type=? AND o.valid_until>?
                 GROUP BY h.id,o.room_type
-                HAVING COUNT(DISTINCT o.night)=? AND MIN(o.remaining)>0 AND MAX(o.price)<=?
-            """, (slots["city"], start.isoformat(), end.isoformat(), slots["room_type"], nights, slots["budget"])).fetchall()
-            city_offers = db.execute("SELECT COUNT(*) FROM offers o JOIN hotels h ON o.hotel_id=h.id WHERE h.city=? AND o.night>=? AND o.night<?",
-                                     (slots["city"], start.isoformat(), end.isoformat())).fetchone()[0]
+                HAVING COUNT(DISTINCT o.night)=? AND MIN(o.remaining)>0
+                       AND (CASE WHEN ?='stay' THEN SUM(o.price) ELSE MAX(o.price) END)<=?
+            """, (slots["city"], start.isoformat(), end.isoformat(), slots["room_type"], time.time(), nights, slots.get("budget_scope", "night"), slots["budget"])).fetchall()
+            city_offers = db.execute("SELECT COUNT(*) FROM offers o JOIN hotels h ON o.hotel_id=h.id WHERE h.city=? AND o.night>=? AND o.night<? AND o.valid_until>?",
+                                     (slots["city"], start.isoformat(), end.isoformat(), time.time())).fetchone()[0]
             hotel_count = db.execute("SELECT COUNT(*) FROM hotels WHERE city=?", (slots["city"],)).fetchone()[0]
         candidates = [{**dict(row), "score": ranks.get(row["id"], 0), "nights": nights} for row in rows]
+        for hotel in candidates:
+            signature = [hotel["id"], slots["check_in"], slots["check_out"], hotel["room_type"],
+                         hotel["total_price"], hotel["valid_until"]]
+            hotel["quote_id"] = hashlib.sha256(json.dumps(signature).encode()).hexdigest()[:32]
         candidates.sort(key=lambda hotel: (-hotel["score"], hotel["total_price"], hotel["id"]))
         return {"candidates": candidates[:limit], "eligible_count": len(candidates),
                 "city_hotels": hotel_count, "offers_known": city_offers > 0,

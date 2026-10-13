@@ -28,3 +28,4 @@ jobs:
       - run: python -m pytest -q
         env:
           REDIS_TEST_URL: redis://127.0.0.1:6379/0
+      - run: python scripts/evaluate_ai_native.py

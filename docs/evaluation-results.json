@@ -1,0 +1,1099 @@
+{
+  "scope": "synthetic deterministic end-to-end business trajectories",
+  "model_called": false,
+  "real_hotel_inventory": false,
+  "total": 60,
+  "passed": 60,
+  "records": [
+    {
+      "id": "negation-0",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-02入住，2030-01-04离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "不要大床，换双床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-1",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-03入住，2030-01-05离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "换双床，不要大床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-2",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-04入住，2030-01-06离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "不要大床，换双床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-3",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-05入住，2030-01-07离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "换双床，不要大床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-4",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-06入住，2030-01-08离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "不要大床，换双床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-5",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-07入住，2030-01-09离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "换双床，不要大床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-6",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-08入住，2030-01-10离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "不要大床，换双床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-7",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-09入住，2030-01-11离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "换双床，不要大床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-8",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-10入住，2030-01-12离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "不要大床，换双床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "negation-9",
+      "category": "negation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-11入住，2030-01-13离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "换双床，不要大床；日期不变，预算可以到450。",
+          "revision": 2,
+          "status": "ready"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-0",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-02入住，2030-01-04离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算550元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-1",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-03入住，2030-01-05离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算551元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-2",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-04入住，2030-01-06离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算552元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-3",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-05入住，2030-01-07离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算553元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-4",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-06入住，2030-01-08离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算554元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-5",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-07入住，2030-01-09离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算555元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-6",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-08入住，2030-01-10离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算556元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-7",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-09入住，2030-01-11离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算557元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-8",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-10入住，2030-01-12离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算558元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "total_budget-9",
+      "category": "total_budget",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-11入住，2030-01-13离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "总预算559元",
+          "revision": 2,
+          "status": "no_match"
+        }
+      ]
+    },
+    {
+      "id": "card_revision-0",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-02入住，2030-01-04离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-1",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-03入住，2030-01-05离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-2",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-04入住，2030-01-06离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-3",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-05入住，2030-01-07离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-4",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-06入住，2030-01-08离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-5",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-07入住，2030-01-09离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-6",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-08入住，2030-01-10离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-7",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-09入住，2030-01-11离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-8",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-10入住，2030-01-12离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "card_revision-9",
+      "category": "card_revision",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-11入住，2030-01-13离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "action": "card",
+          "revision": 2
+        }
+      ]
+    },
+    {
+      "id": "relaxation-0",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-02入住，2030-01-04离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成100元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-1",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-03入住，2030-01-05离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成101元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-2",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-04入住，2030-01-06离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成102元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-3",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-05入住，2030-01-07离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成103元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-4",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-06入住，2030-01-08离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成104元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-5",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-07入住，2030-01-09离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成105元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-6",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-08入住，2030-01-10离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成106元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-7",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-09入住，2030-01-11离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成107元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-8",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-10入住，2030-01-12离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成108元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "relaxation-9",
+      "category": "relaxation",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-11入住，2030-01-13离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "预算改成109元",
+          "revision": 2,
+          "status": "no_match"
+        },
+        {
+          "action": "accept",
+          "revision": 3
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-0",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-02入住，2030-01-04离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "必须安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-1",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-03入住，2030-01-05离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "一定要安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-2",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-04入住，2030-01-06离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "必须安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-3",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-05入住，2030-01-07离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "一定要安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-4",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-06入住，2030-01-08离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "必须安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-5",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-07入住，2030-01-09离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "一定要安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-6",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-08入住，2030-01-10离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "必须安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-7",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-09入住，2030-01-11离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "一定要安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-8",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-10入住，2030-01-12离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "必须安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "unknown_evidence-9",
+      "category": "unknown_evidence",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-11入住，2030-01-13离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "一定要安静",
+          "revision": 2,
+          "status": "quote_pending"
+        }
+      ]
+    },
+    {
+      "id": "human_approval-0",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-02入住，2030-01-04离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-1",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-03入住，2030-01-05离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-2",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-04入住，2030-01-06离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-3",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-05入住，2030-01-07离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-4",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-06入住，2030-01-08离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-5",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-07入住，2030-01-09离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-6",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-08入住，2030-01-10离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-7",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-09入住，2030-01-11离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-8",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-10入住，2030-01-12离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    },
+    {
+      "id": "human_approval-9",
+      "category": "human_approval",
+      "passed": true,
+      "steps": [
+        {
+          "text": "上海，2030-01-11入住，2030-01-13离店，预算400元，大床房",
+          "revision": 1,
+          "status": "ready"
+        },
+        {
+          "text": "选第一个",
+          "revision": 1,
+          "status": "awaiting_confirmation"
+        },
+        {
+          "action": "approve_twice",
+          "one_receipt": true
+        }
+      ]
+    }
+  ]
+}

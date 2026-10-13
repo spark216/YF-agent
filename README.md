@@ -1,4 +1,4 @@
-# YF-Agent｜酒店预订智能客服 Agent
+# YF-Agent｜AI-native 酒店需求协商与预订客服
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/Workflow-LangGraph-166534)](https://github.com/langchain-ai/langgraph)
@@ -7,7 +7,7 @@
 [![Tests](https://github.com/spark216/YF-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/spark216/YF-agent/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue)](LICENSE)
 
-**围绕酒店预订咨询，构建可维护多轮状态、可更新检索条件、可追踪与恢复任务的客服 Agent。**
+**将自然语言需求、可编辑条件卡片、证据推荐、条件协商和人工审批连接成可运行的酒店咨询流程。**
 
 面向酒店代理商的店铺消息场景，串联需求收集、酒店候选推荐、条件修改和预订引导。通过 LangGraph 编排业务流程，Redis 缓存活跃会话，SQLite 保存持久状态、业务数据和检查点，FAISS 对酒店目录进行向量排序。
 
@@ -29,7 +29,7 @@
 - **检索与过滤**：支持 BGE-M3 编码与 FAISS 排序，SQLite 按城市、日期、每晚预算和房型执行约束过滤；酒店目录实际导入 **9,999 家**，约 1 万家。
 - **多轮状态**：Redis 保存带 TTL 的活跃会话，SQLite 保存完整业务状态；缓存版本不一致或 Redis 故障时从持久层恢复。
 - **候选失效**：城市、日期、预算或房型修改后，立即清除旧候选和已选酒店，使用版本号关联新结果。
-- **并发与去重**：同一会话串行处理，不同会话受 Semaphore 限制；按会话 ID + 消息 ID 保存请求结果，重复消息不会追加历史或重复运行工作流。
+- **并发与去重**：同一会话入口事务串行，慢检索在锁外执行，不同任务受 Semaphore 限制；按会话 ID + 消息 ID 保存请求结果，重复消息不会追加历史或重复运行工作流。
 - **任务恢复**：LangGraph 异步 SQLite 检查点、有限次数重试和工具超时；服务重新启动后可以继续失败的节点，旧任务不会覆盖更新后的需求。
 - **追踪与验证**：记录节点状态、耗时、工具结果、重试及异常类型；自动断言覆盖多轮状态和恢复边界，截图通过浏览器实际操作生成。
 
@@ -62,11 +62,33 @@
 
 **截图说明：**演示真实执行 LangGraph、FAISS、SQLite 和 Redis 客户端接口；使用规则槽位、384 维哈希向量、样例房态及 fakeredis。它们不代表 BGE-M3 检索效果、真实 Redis 服务部署或酒店实时成交报价，页面也明确标注了演示模式。
 
+## AI-native 的具体作用与独特设计
+
+语言理解输出可确认的业务提案，推荐附带可核查资料，用户可通过对话和卡片共同控制需求，重要动作在持久工作流中等待人工授权。完整实现、接口、取舍和双岗位简历表述见 [实现与验收说明](docs/AI_NATIVE_IMPLEMENTATION.md)；调研依据与长期规划见 [升级设计](docs/AI_NATIVE_DESIGN.md)。
+
+- **模型不能自行授权条件变更**：模型操作必须引用本轮原文；只有独立解析确认的明确条件直接提交，其余提案等待用户确认。
+- **慢工具与最新需求隔离**：入口短事务提交后释放会话锁；发布结果比较需求版本、消息轮次与选择版本，连同条件版本下的旧回复也会丢弃。
+- **可行方案协商**：无匹配时查询有效库存的最小可行预算，仅在授权日期灵活时尝试前后一天。方案不会自行改变预算或城市。
+- **未知事实不补成承诺**：安静、亲子和地铁距离具有核验状态、来源与有效期；必需偏好证据缺失时转为待核验。
+- **审批与报价绑定**：真实 LangGraph `interrupt` 暂停草稿；授权恢复时重新核验报价和必需证据，生成幂等交接回执。
+
+### 条件协商与证据推荐
+
+<img src="images/constraint-negotiation.png" width="1100" alt="无匹配时提出基于样例库存计算的可行方案，由用户接受后更新需求">
+
+<img src="images/evidence-recommendation.png" width="1100" alt="偏好推荐展示证据编号、来源与未知事实提示">
+
+### 人工确认与任务恢复
+
+<img src="images/human-approval.png" width="1100" alt="人工输入审批令牌后恢复持久化工作流，生成交接回执">
+
+离线演示使用合成库存与合成核验资料，来源标注 `demo_fixture`；交接回执不代表供应商订单。60 条轨迹的实际结果保存在 [评测报告](docs/evaluation-results.json)，不等同于模型准确率或成交指标。
+
 ## 系统架构
 
 ```mermaid
 flowchart TD
-    A[闲鱼 WebSocket / 本地演示界面] --> B[会话串行 + 消息 ID 去重]
+    A[闲鱼 WebSocket / 对话与条件卡片] --> B[入口短事务 + 消息 ID 去重]
     B --> C[Semaphore 并发限制]
     C --> D[读取持久状态与 Redis 活跃缓存]
     D --> E[意图识别]
@@ -89,7 +111,7 @@ flowchart TD
 
 ### 状态与存储职责
 
-- **Redis**：近期对话、业务槽位、候选、需求版本和任务状态的活跃缓存，默认 TTL 1,800 秒；不承担最终持久化。
+- **Redis**：近期对话、业务槽位、偏好、候选、需求版本和任务状态的活跃缓存，默认 TTL 1,800 秒；不承担最终持久化。
 - **SQLite 会话库**：会话状态、消息去重结果、平台回复发送记录、节点轨迹。
 - **SQLite 检查点库**：LangGraph 每个节点的可恢复状态。
 - **SQLite 酒店库**：酒店目录和逐日房型报价/库存。目录存在不表示指定日期有房。
@@ -193,12 +215,12 @@ python run_xianyu.py
 
 ## 测试与可复现证据
 
-本地运行：**31 项自动测试通过，6 轮浏览器交互断言通过，生成 5 张真实页面截图**。GitHub Actions 在 Python 3.11 + 真实 Redis 7.4 下 **32 项测试全部通过**，包含缓存过期与持久状态回填。当前仓库的持续集成记录见 [GitHub Actions](https://github.com/spark216/YF-agent/actions)。本机没有真实 Redis 时，该集成项明确跳过。
-
+本次本地验证（2026-10-13）：**51 项自动测试通过，1 项真实 Redis 集成测试因未启动服务而跳过；60/60 条合成业务轨迹通过；11 次浏览器业务响应验证通过，生成 9 张实际运行截图**。CI 配置使用 Python 3.11 与真实 Redis 7.4，运行全部测试和轨迹评测；执行状态见 [GitHub Actions](https://github.com/spark216/YF-agent/actions)。
 覆盖需求缺失、城市/日期/预算/房型修改、选择后修改、无匹配、缺少某晚房态、售罄、消息重复、并发上限、Redis TTL/过期/故障/旧缓存、有限重试、工具超时、服务重启恢复和过期任务拒绝。
 
 ```powershell
 python -m pytest -q
+python scripts/evaluate_ai_native.py
 # 启动 demo_web.py 后，使用系统 Edge 捕获真实运行截图
 python scripts/capture_demo.py --channel msedge
 ```
@@ -212,12 +234,18 @@ python scripts/capture_demo.py --channel msedge
 ```text
 YF-Agent/
 ├── booking_service.py       # LangGraph 预订图、并发、去重、恢复
+├── requirement_contracts.py # 带来源和版本的需求变更协议
+├── evidence_store.py        # 有效期事实、证据过滤与未知状态
+├── constraint_negotiator.py # 有界查询与可选条件协商
+├── clarification_policy.py  # 单个阻塞问题追问
+├── booking_approval.py      # 持久化中断、授权恢复与交接回执
 ├── booking_slots.py         # 业务槽位更新与日期/预算校验
 ├── session_store.py         # Redis 缓存、SQLite 状态与轨迹
 ├── hotel_repository.py      # SQLite 酒店/逐日报价与 FAISS 排序
 ├── live_price_provider.py   # 网页报价接入，明确未知房态
 ├── agent_factory.py         # 演示/真实模型模式组装
 ├── demo_web.py              # FastAPI 本地展示入口
+├── web/app.js               # 条件卡片、SSE、证据和审批交互
 ├── web/index.html           # 会话、槽位、候选与追踪工作台
 ├── demo_booking.py          # 新业务工作流的终端演示
 ├── run_xianyu.py            # 闲鱼消息接入与人工接管
@@ -232,6 +260,7 @@ YF-Agent/
 ├── data/hotel_catalog.xlsx  # 9,999 家酒店原始目录
 ├── images/                  # 实际运行截图
 ├── tests/                   # 自动化业务与恢复断言
+├── scripts/evaluate_ai_native.py # 60 条合成轨迹验证
 ├── scripts/capture_demo.py  # 浏览器交互与截图脚本
 ├── docs/                    # 架构、部署、测试和展示说明
 ├── requirements-core.txt   # 轻量工作流与展示依赖

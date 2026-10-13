@@ -38,7 +38,8 @@ async def test_missing_slots_do_not_retrieve(tmp_path):
     async with service(tmp_path) as agent:
         result = await agent.handle("c", "1", "想去上海住酒店")
         assert result["session"]["task_status"] == "collecting"
-        assert "预算" in result["response"]
+        assert "入住" in result["response"]
+        assert result["session"]["clarification"]["field"] == "check_in"
         assert "hotel_retrieval" not in [trace["node"] for trace in agent.store.traces("c")]
 
 
@@ -103,7 +104,8 @@ async def test_consecutive_messages_serialized(tmp_path):
         await asyncio.gather(agent.handle("c", "1", FULL), agent.handle("c", "2", "换双床房"))
         state = await agent.store.load("c")
         assert state["slots"]["room_type"] == "双床房"
-        assert len(state["history"]) == 4
+        assert sum(message["role"] == "user" for message in state["history"]) == 2
+        assert state["history"][-1]["role"] == "assistant"
         assert not agent.locks
 
 

@@ -36,6 +36,11 @@ class SessionStore:
                     chat_id TEXT, message_id TEXT, sent REAL,
                     PRIMARY KEY(chat_id,message_id));
             """)
+            columns = {row[1] for row in db.execute("PRAGMA table_info(requests)")}
+            if "prepared" not in columns:
+                db.execute("ALTER TABLE requests ADD COLUMN prepared TEXT")
+            if "revision" not in columns:
+                db.execute("ALTER TABLE requests ADD COLUMN revision INTEGER")
 
     @contextmanager
     def connect(self):
@@ -50,7 +55,9 @@ class SessionStore:
     @staticmethod
     def empty_session():
         return {"slots": {}, "history": [], "revision": 0, "candidates": [],
-                "task_status": "collecting", "candidate_revision": None, "selected_hotel": None, "quotes": []}
+                "task_status": "collecting", "candidate_revision": None, "selected_hotel": None, "quotes": [],
+                "preferences": [], "slot_sources": {}, "claims": [], "relaxations": [],
+                "pending_proposal": None, "verification_candidates": [], "selection_epoch": 0, "draft": None}
 
     def key(self, chat_id):
         # Encode arbitrary platform identifiers without Redis key collisions.
@@ -100,17 +107,55 @@ class SessionStore:
 
     def begin(self, chat_id: str, message_id: str, text: str):
         with self.connect() as db:
-            # A newer message supersedes an interrupted task. It must never be resumed
-            # later and overwrite newer business slots.
-            db.execute("UPDATE requests SET status='superseded' WHERE chat_id=? AND message_id<>? AND status IN ('running','failed')",
-                       (chat_id, message_id))
             db.execute("INSERT INTO requests(chat_id,message_id,text,status,updated) VALUES(?,?,?,'running',?) "
                        "ON CONFLICT(chat_id,message_id) DO UPDATE SET status='running',updated=excluded.updated,attempts=requests.attempts+1",
                        (chat_id, message_id, text, time.time()))
 
+    async def prepare(self, chat_id, message_id, session, state, expected_revision):
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT data FROM sessions WHERE chat_id=?", (chat_id,)).fetchone()
+            current = json.loads(row["data"]) if row else self.empty_session()
+            if current["revision"] != expected_revision:
+                from requirement_contracts import RevisionConflict
+                raise RevisionConflict("Requirement version changed before commit")
+            session["turn_epoch"] = current.get("turn_epoch", 0) + 1
+            db.execute("INSERT INTO sessions VALUES(?,?,?) ON CONFLICT(chat_id) DO UPDATE SET data=excluded.data,updated=MAX(sessions.updated+0.000001,excluded.updated)",
+                       (chat_id, json.dumps(session, ensure_ascii=False), time.time()))
+            db.execute("UPDATE requests SET prepared=?,revision=? WHERE chat_id=? AND message_id=?",
+                       (json.dumps(state, ensure_ascii=False), session["revision"], chat_id, message_id))
+            db.execute("UPDATE requests SET status='superseded' WHERE chat_id=? AND message_id<>? AND status IN ('running','failed')",
+                       (chat_id, message_id))
+        await self.cache(chat_id, session)
+
+    async def publish(self, chat_id, message_id, result):
+        snapshot = result["session"]
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT data FROM sessions WHERE chat_id=?", (chat_id,)).fetchone()
+            current = json.loads(row["data"]) if row else self.empty_session()
+            stale = (row is None or current["revision"] != snapshot["revision"] or
+                     current.get("turn_epoch", 0) != snapshot.get("turn_epoch", 0) or
+                     current.get("selection_epoch", 0) != snapshot.get("selection_epoch", 0))
+            if stale:
+                db.execute("UPDATE requests SET status='superseded',updated=? WHERE chat_id=? AND message_id=?",
+                           (time.time(), chat_id, message_id))
+                return {**result, "session": current, "stale": True, "response": "旧条件下的结果已丢弃，请查看最新需求。"}
+            for key in ("candidates", "candidate_revision", "quotes", "claims", "verification_candidates", "relaxations", "task_status", "draft", "clarification"):
+                if key in snapshot:
+                    current[key] = snapshot[key]
+            current["history"] = (current["history"] + [{"role": "assistant", "content": result["response"]}])[-20:]
+            result = {**result, "session": current, "stale": False}
+            db.execute("UPDATE sessions SET data=?,updated=updated+0.000001 WHERE chat_id=?",
+                       (json.dumps(current, ensure_ascii=False), chat_id))
+            db.execute("UPDATE requests SET status='completed',result=?,updated=? WHERE chat_id=? AND message_id=?",
+                       (json.dumps(result, ensure_ascii=False), time.time(), chat_id, message_id))
+        await self.cache(chat_id, current)
+        return result
+
     def failed(self, chat_id, message_id):
         with self.connect() as db:
-            db.execute("UPDATE requests SET status='failed',updated=? WHERE chat_id=? AND message_id=?",
+            db.execute("UPDATE requests SET status='failed',updated=? WHERE chat_id=? AND message_id=? AND status<>'superseded'",
                        (time.time(), chat_id, message_id))
 
     def delivery_sent(self, chat_id, message_id):
@@ -145,13 +190,14 @@ class SessionStore:
 
     async def reset(self, chat_id):
         with self.connect() as db:
-            # Request/checkpoint history remains for audit; callers use new message IDs.
-            db.execute("DELETE FROM sessions WHERE chat_id=?", (chat_id,))
-        if self.redis is not None:
-            try:
-                await self.redis.delete(self.key(chat_id))
-            except Exception:
-                self.cache_status = "sqlite_fallback"
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT data FROM sessions WHERE chat_id=?", (chat_id,)).fetchone()
+            session = self.empty_session()
+            session["revision"] = (json.loads(row["data"])["revision"] if row else 0) + 1
+            db.execute("INSERT INTO sessions VALUES(?,?,?) ON CONFLICT(chat_id) DO UPDATE SET data=excluded.data,updated=MAX(sessions.updated+0.000001,excluded.updated)",
+                       (chat_id, json.dumps(session, ensure_ascii=False), time.time()))
+            db.execute("UPDATE requests SET status='superseded' WHERE chat_id=? AND status IN ('running','failed')", (chat_id,))
+        await self.cache(chat_id, session)
 
     async def close(self):
         if self.redis is not None:

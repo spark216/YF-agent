@@ -28,23 +28,19 @@ def model_providers():
         response = await client.chat.completions.create(
             model=os.getenv("MODEL_NAME", "qwen-max"), temperature=0,
             messages=[{"role": "system", "content":
-                "你只提取用户本轮明确表达的酒店需求变更，返回 JSON 对象。字段 city/check_in/check_out/budget/room_type，"
-                "budget 为每晚数字，日期 YYYY-MM-DD，房型为大床房/双床房/套房/家庭房。"
-                "不推断未表达的需求，不输出未知字段。不清楚时返回 {}。今天是 " + date.today().isoformat()},
+                "提取本轮酒店需求变更，返回JSON对象{operations:[...]}。每项包含op(set/unset/add_preference/remove_preference)、"
+                "field、value、origin(explicit/inferred/derived)、evidence(必须是本轮原文子串)。"
+                "允许字段city/check_in/check_out/budget/room_type/budget_scope(night/stay)/date_flexible。"
+                "偏好仅quiet/family_friendly布尔值、metro_walk_minutes数字，偏好可带hard布尔值。"
+                "budget是数字；日期YYYY-MM-DD；不要大床不是选择大床。保持未提及字段，日期不变不修改日期。"
+                "存在推断时标inferred，不用自报置信度替代用户确认。无变更返回operations空列表。今天是" + date.today().isoformat()},
                 {"role": "user", "content": json.dumps({"existing_slots": slots, "message": text}, ensure_ascii=False)}],
             response_format={"type": "json_object"})
         patch = json.loads(response.choices[0].message.content)
         if not isinstance(patch, dict):
             raise ValueError("Slot extractor must return an object")
-        patch = {key: value for key, value in patch.items() if key in REQUIRED and value is not None}
-        for key in ("check_in", "check_out"):
-            if key in patch:
-                date.fromisoformat(patch[key])
-        if "budget" in patch:
-            patch["budget"] = float(patch["budget"])
-        for key in ("city", "room_type"):
-            if key in patch and not isinstance(patch[key], str):
-                raise ValueError("Invalid slot type")
+        if not isinstance(patch.get("operations"), list) or len(patch["operations"]) > 15:
+            raise ValueError("Model must return a bounded operation list")
         return patch
 
     # Replies retain deterministic factual pricing. LLM extraction enriches language understanding;
@@ -85,7 +81,13 @@ async def create_agent(*, demo=False, work_dir=None, redis_client=None):
     service = BookingService(store, repository, max_concurrency=int(os.getenv("MAX_CONCURRENCY", "4")),
                              timeout=float(os.getenv("TOOL_TIMEOUT", "20")),
                              retries=int(os.getenv("TOOL_RETRIES", "2")),
-                             slot_extractor=extractor, intent_detector=detector, quote_provider=quote_provider)
+                             slot_extractor=extractor, intent_detector=detector, quote_provider=quote_provider,
+                             reviewer_token="demo-reviewer" if demo else os.getenv("REVIEWER_TOKEN", ""))
+    if demo:
+        for city in ("上海", "北京", "杭州", "成都"):
+            for i, hotel in enumerate([item for item in repository.catalog() if item["city"] == city][:3]):
+                for field, value in (("quiet", i == 0), ("family_friendly", i != 2), ("metro_walk_minutes", 5 + i * 6)):
+                    service.evidence.put(hotel["id"], field, value, "demo_fixture:样例酒店资料", ttl=86400)
     try:
         async with service:
             yield service

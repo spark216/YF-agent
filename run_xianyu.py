@@ -479,22 +479,11 @@ class XianyuLive:
             
             logger.info(f"用户: {send_user_name} (ID: {send_user_id}), 商品: {item_id}, 会话: {chat_id}, 消息: {send_message}")
 
-            # 获取会话锁，同用户串行处理，不同用户并发
-            if chat_id not in self._chat_locks:
-                self._chat_locks[chat_id] = asyncio.Lock()
-            lock = self._chat_locks[chat_id]
-            self._chat_lock_users[chat_id] = self._chat_lock_users.get(chat_id, 0) + 1
-            try:
-                async with lock:
-                    await self._process_chat_message(
-                        message, send_user_name, send_user_id,
-                        send_message, item_id, chat_id, websocket
-                    )
-            finally:
-                self._chat_lock_users[chat_id] -= 1
-                if not self._chat_lock_users[chat_id]:
-                    self._chat_lock_users.pop(chat_id, None)
-                    self._chat_locks.pop(chat_id, None)
+            # BookingService serializes ingress only; slow tools must not block edits.
+            await self._process_chat_message(
+                message, send_user_name, send_user_id,
+                send_message, item_id, chat_id, websocket
+            )
 
         except Exception as e:
             logger.error(f"handle_message 异常: {e}")
@@ -519,7 +508,7 @@ class XianyuLive:
             item_info = self.context_manager.get_item_info(item_id)
             if not item_info:
                 logger.info(f"从API获取商品信息: {item_id}")
-                api_result = self.xianyu.get_item_info(item_id)
+                api_result = await asyncio.to_thread(self.xianyu.get_item_info, item_id)
                 if 'data' in api_result and 'itemDO' in api_result['data']:
                     item_info = api_result['data']['itemDO']
                     self.context_manager.save_item_info(item_id, item_info)
@@ -541,6 +530,8 @@ class XianyuLive:
                     ensure_ascii=False).encode()).hexdigest()
             message_id = str(message_id)
             result = await self.booking_agent.handle(chat_id, message_id, send_message)
+            if result.get("stale"):
+                return
             bot_reply = result["response"]
             detected_intent = result.get("intent", "常规咨询")
             if result["duplicate"] and self.booking_agent.store.delivery_sent(chat_id, message_id):
@@ -570,8 +561,15 @@ class XianyuLive:
                 logger.info(f"模拟人工输入，延迟发送 {total_delay:.2f} 秒...")
                 await asyncio.sleep(total_delay)
 
-            await self.send_msg(websocket, chat_id, send_user_id, bot_reply)
-            self.booking_agent.store.mark_delivery(chat_id, message_id)
+            async with self.booking_agent.serial(chat_id):
+                current = await self.booking_agent.store.load(chat_id)
+                if (current["revision"] != result["session"]["revision"] or
+                        current.get("turn_epoch", 0) != result["session"].get("turn_epoch", 0) or
+                        current.get("selection_epoch", 0) != result["session"].get("selection_epoch", 0) or
+                        self.is_manual_mode(chat_id) or self.booking_agent.store.delivery_sent(chat_id, message_id)):
+                    return
+                await self.send_msg(websocket, chat_id, send_user_id, bot_reply)
+                self.booking_agent.store.mark_delivery(chat_id, message_id)
 
         except Exception as e:
             logger.error(f"处理消息时发生错误: {str(e)}")
