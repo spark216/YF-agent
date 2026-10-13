@@ -58,4 +58,4 @@ python scripts/capture_demo.py --channel msedge
 
 GitHub Actions 使用 Python 3.11 和 Redis 7.4，运行全部业务断言以及真实 Redis TTL / 状态回填测试。本地没有 `REDIS_TEST_URL` 时真实服务测试明确跳过；本机的 fakeredis 结果不代替这项集成测试。
 
-历史工程版本已在 Python 3.11 + Redis 7.4 下通过全部 32 项测试。当前目标仓库的运行记录见 [GitHub Actions](https://github.com/spark216/YF-agent/actions)。本机没有真实 Redis 的说明不影响独立服务验证结果。
+本版代码提交 `bb90502` 在 Python 3.11 + Redis 7.4 下 **52 passed，60/60 条轨迹通过**。日志提取确认 pytest 用时 6.98 秒；[本版 CI 记录](https://github.com/spark216/YF-agent/actions/runs/38389852531)。本机跳过真实 Redis 项，远程 CI 完成该独立服务验证。
